@@ -3,13 +3,18 @@ package fileReaderPlayGround;
 import java.io.BufferedInputStream;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -26,69 +31,50 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class fileCurReader {
 
+	Map<String, Integer> map = new HashMap<>();
+
 	public static void main(String[] args) {
 		File dir = new File("C:\\Users\\Tony Chi\\Desktop\\Programming\\Amazon Billing\\amazon-billing\\CUR");
-		showDirectoryFiles(dir);
+		fileCurReader reader = new fileCurReader();
+		reader.showDirectoryFiles(dir);
 	}
 
-	public static void showDirectoryFiles(File dir) {
-		File[] files = dir.listFiles();
-		for (File file : files) {
-			if (file.isDirectory()) {
-				showDirectoryFiles(file);
-			} else {
-				calculateRows(file);
-			}
-
-		}
-	}
-
-	public static void calculateRows(File file) {
-	
+	public void showDirectoryFiles(File dir) {
 		try {
-			ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(file));
-			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(zipInputStream));
-			while ((zipInputStream.getNextEntry() != null)) {				
-				String line = "";
-				int usageAccountId = 0;
-				while ((line = bufferedReader.readLine()) != null) {
-					String[] resultSet = line.split(",");
-					Map<String, Integer> map = new HashMap<>();
-					usageAccountId = map.containsKey(resultSet[8]) ? map.get(resultSet[8]) : 0;
-					map.remove("lineItem/UsageAccountId");
-					map.put(resultSet[8], usageAccountId + 1);
-					valueAdder(map);
-					ObjectMapper objectMapper = new ObjectMapper();
-					String finalResult = objectMapper.writeValueAsString(map);
+			File[] files = dir.listFiles(); //檢查是否為目錄
+			for (File file : files) {
+				if (file.isDirectory()) {   
+					showDirectoryFiles(file);
+				} else {                        //找到壓縮檔後開始讀取
+
+					ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(file));
+					BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(zipInputStream));
+
+					while ((zipInputStream.getNextEntry() != null)) {
+						String line = "";
+						int usageAccountId = 0;
+
+						while ((line = bufferedReader.readLine()) != null) { //將Key值相同的Value疊加
+							String[] resultSet = line.split(",");   
+							usageAccountId = map.containsKey(resultSet[8]) ? map.get(resultSet[8]) : 0;
+							map.put(resultSet[8], usageAccountId + 1);
+						}
+						map.remove("lineItem/UsageAccountId");               //移除Header後其餘資料轉為JSON格式輸出
+						ObjectMapper mapper = new ObjectMapper();
+						String result = mapper.writeValueAsString(map);
+						String fileRoute = "C:\\Users\\Tony Chi\\output.json";
+						FileOutputStream fos = new FileOutputStream(fileRoute);
+						BufferedWriter output = new BufferedWriter(new OutputStreamWriter(fos));
+						output.write(result);
+						output.close();		
+					}
+					zipInputStream.close();  //工作完成關閉輸入流
+					bufferedReader.close();   
 					
-				}		
-			}	
-			zipInputStream.close();
-			bufferedReader.close();
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
-		}	
-	}
-	
-	public static Map<String,Integer> valueAdder(Map<String,Integer> map){
-		
-		Set<Map.Entry<String, Integer>>entrySet = map.entrySet();
-		Iterator<Map.Entry<String, Integer>> it = entrySet.iterator();
-		Map <String,Integer> resultSet = new HashMap<>();	
-		while(it.hasNext()) {	
-			Map.Entry<String, Integer> me = it.next();	
-			String key = me.getKey();
-			int value = me.getValue();
-			if(resultSet.containsKey(key)) {
-				//resultSet現在是空值，但Key是有東西的
-				resultSet.put(key, resultSet.get(key)+value);
-			}else {
-				resultSet.put(key, value);				
-			}
-			System.out.println("resultSet="+resultSet);
 		}
-		return map;
 	}
-	
-	
 }
