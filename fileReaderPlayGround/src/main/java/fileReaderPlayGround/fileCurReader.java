@@ -31,17 +31,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class fileCurReader {
 
-	Map<String, Integer> map = new HashMap<>();
+	
 
-	public static void main(String[] args) {
+	public static void main(String[] args) { //匯入檔案
 		File dir = new File("C:\\Users\\Tony Chi\\Desktop\\Programming\\Amazon Billing\\amazon-billing\\CUR");
 		fileCurReader reader = new fileCurReader();
 		reader.showDirectoryFiles(dir);
 	}
 
+	Map<String, Integer> map = new HashMap<>(); //儲存CUR結果用
+	
 	public void showDirectoryFiles(File dir) {
 		try {
-			File[] files = dir.listFiles(); //檢查是否為目錄
+			File[] files = dir.listFiles(); //檢查為目錄或檔案
 			for (File file : files) {
 				if (file.isDirectory()) {   
 					showDirectoryFiles(file);
@@ -51,21 +53,22 @@ public class fileCurReader {
 					BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(zipInputStream));
 
 					while ((zipInputStream.getNextEntry() != null)) {
-						String line = "";
-						int usageAccountId = 0;
+						String contentLine = "";
+						int valueCounter = 0;
 
-						while ((line = bufferedReader.readLine()) != null) { //將Key值相同的Value疊加
-							String[] resultSet = line.split(",");   
-							usageAccountId = map.containsKey(resultSet[8]) ? map.get(resultSet[8]) : 0;
-							map.put(resultSet[8], usageAccountId + 1);
+						while ((contentLine = bufferedReader.readLine()) != null) { //將Key值相同的Value疊加
+							String[] resultSet = contentLine.split(","); 
+							String key = resultSet[8];
+							valueCounter = map.containsKey(key) ? map.get(key) : 0;
+							map.put(key, valueCounter + 1);
 						}
 						map.remove("lineItem/UsageAccountId");               //移除Header後其餘資料轉為JSON格式輸出
 						ObjectMapper mapper = new ObjectMapper();
-						String result = mapper.writeValueAsString(map);
-						String fileRoute = "C:\\Users\\Tony Chi\\output.json";
-						FileOutputStream fos = new FileOutputStream(fileRoute);
+						String finalResult = mapper.writeValueAsString(map);
+						String filePath = "C:\\Users\\Tony Chi\\output.json";
+						FileOutputStream fos = new FileOutputStream(filePath);
 						BufferedWriter output = new BufferedWriter(new OutputStreamWriter(fos));
-						output.write(result);
+						output.write(finalResult);
 						output.close();		
 					}
 					zipInputStream.close();  //工作完成關閉輸入流
@@ -77,4 +80,6 @@ public class fileCurReader {
 			e.printStackTrace();
 		}
 	}
+	
+	
 }
