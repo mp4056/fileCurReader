@@ -10,24 +10,35 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class fileCurReader {
 
-	public static void main(String[] args) { // 匯入檔案
-		File dir = new File("C:\\Users\\Tony Chi\\Desktop\\Programming\\Amazon Billing\\amazon-billing\\CUR");
-		fileCurReader reader = new fileCurReader();
-		mapToJsonConvertor(reader.getCurResultMap(dir));
-	}
+	public static void main(String[] args) throws ExecutionException, InterruptedException{ // 匯入檔案
+		
+		CompletableFuture<Void> taskManage = CompletableFuture.runAsync(()->{
+			
+				File dir = new File("C:\\Users\\Tony Chi\\Desktop\\Programming\\Amazon Billing\\amazon-billing\\CUR");
+				fileCurReader reader = new fileCurReader();
+				ConcurrentHashMap<String,AtomicInteger>resultMap = reader.getCurResultMap(dir);
+				mapToJsonConvertor(resultMap);
+		
+		});
+	}	
 
-	Map<String, Integer> map = new HashMap<>(); // 儲存CUR結果用
+	ConcurrentHashMap<String, AtomicInteger> map = new ConcurrentHashMap<String,AtomicInteger>(); // 儲存CUR結果用
 
-	public Map<String, Integer> getCurResultMap(File dir) {
+	public ConcurrentHashMap<String, AtomicInteger> getCurResultMap(File dir) {
 		try {
 			File[] files = dir.listFiles(); // 檢查為目錄或檔案
 			for (File file : files) {
-				if (file.isDirectory()) {
+				if (file.isDirectory()) { 
 					getCurResultMap(file);
 				} else { // 找到壓縮檔後開始讀取
 
@@ -36,13 +47,13 @@ public class fileCurReader {
 
 					while ((zipInputStream.getNextEntry() != null)) {
 						String contentLine = "";
-						int valueCounter = 0;
+						
 
 						while ((contentLine = bufferedReader.readLine()) != null) { // 將Key值相同的Value疊加
 							String[] resultSet = contentLine.split(",");
 							String key = resultSet[8];
-							valueCounter = map.containsKey(key) ? map.get(key) : 0;
-							map.put(key, valueCounter + 1);
+							map.putIfAbsent(key, new AtomicInteger(0));
+							map.get(key).incrementAndGet();
 						}
 						map.remove("lineItem/UsageAccountId"); // 移除Header後其餘資料轉為JSON格式輸出					
 					}
@@ -56,11 +67,11 @@ public class fileCurReader {
 		return map;
 	}
 
-	public static void mapToJsonConvertor(Map<String, Integer> map) { // map轉換成JSON
+	public static void mapToJsonConvertor(ConcurrentHashMap<String, AtomicInteger> map) { // map轉換成JSON
 		try {
 			ObjectMapper mapper = new ObjectMapper();
 			String finalResult = mapper.writeValueAsString(map);
-			String filePath = "C:\\output.json";
+			String filePath = "C:\\Users\\Tony Chi\\output.json";
 			FileOutputStream fos = new FileOutputStream(filePath);
 			BufferedWriter output = new BufferedWriter(new OutputStreamWriter(fos));
 			output.write(finalResult);
