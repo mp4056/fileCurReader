@@ -22,13 +22,12 @@ public class fileCurReader {
 
 	public static void main(String[] args) throws ExecutionException, InterruptedException{ // 匯入檔案
 		
-		CompletableFuture<Void> taskManage = CompletableFuture.runAsync(()->{
+		CompletableFuture<Void> curResultTaskManager = CompletableFuture.runAsync(()->{
 			
 				File dir = new File("C:\\Users\\Tony Chi\\Desktop\\Programming\\Amazon Billing\\amazon-billing\\CUR");
 				fileCurReader reader = new fileCurReader();
-				ConcurrentHashMap<String,AtomicInteger>resultMap = reader.getCurResultMap(dir);
+				ConcurrentHashMap<String,AtomicInteger>resultMap = reader.getCurResultMap(dir);	
 				mapToJsonConvertor(resultMap);
-		
 		});
 	}	
 
